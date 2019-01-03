@@ -55,7 +55,7 @@ class DefaultConfigs(object):
     no_tb = False # disables tensorboard
     tbh = '127.0.0.1:8009' # Tensorboard (Crayon) host
     num_gpu = 1 # Number of GPUS to use
-    resume = '' # path to latest checkpoint (default: none)
+    resume = '/content/gdrive/My Drive/atlas/checkpoint-5.pth.tar' # path to latest checkpoint (default: none)
     print_freq = 10 # print frequency 
     save_batches = False # save images of batch inputs and targets every log interval for debugging/verification
     output = '/content/gdrive/My Drive/' # path to output folder (default: none, current dir)
@@ -209,7 +209,7 @@ def main():
 #                dense_sparse_dense.sparsify(model, sparsity=0.)  # ensure sparsity_masks exist in model definition
             model.load_state_dict(checkpoint['state_dict'])
             optimizer.load_state_dict(checkpoint['optimizer'])
-            print("=> loaded checkpoint '{}' (epoch {})".format(optimizer.resume, checkpoint['epoch']))
+            print("=> loaded checkpoint '{}' (epoch {})".format(config.resume, checkpoint['epoch']))
             start_epoch = checkpoint['epoch']
 #            if args.sparse and not sparse_checkpoint:
 #                print("Sparsifying loaded model")
