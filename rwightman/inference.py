@@ -1,131 +1,109 @@
-import argparse
 import os
 import time
 import cv2
 import numpy as np
 import pandas as pd
-from dataset import AmazonDataset, get_tags
+from dataset import HumanDataset, get_tags
 from utils import AverageMeter, get_outdir
 import torch
 import torch.autograd as autograd
 import torch.utils.data as data
-from models import create_model, dense_sparse_dense
+from models import get_net
 
-parser = argparse.ArgumentParser(description='Inference')
-parser.add_argument('data', metavar='DIR',
-                    help='path to dataset')
-parser.add_argument('--model', default='countception', type=str, metavar='MODEL',
-                    help='Name of model to train (default: "countception"')
-parser.add_argument('--multi-label', action='store_true', default=True,
-                    help='Multi-label target')
-parser.add_argument('--no-multi-label', action='store_false', dest='multi_label', default=False,
-                    help='No multi-label target')
-parser.add_argument('--gp', default='avg', type=str, metavar='POOL',
-                    help='Type of global pool, "avg", "max", "avgmax"')
-parser.add_argument('--tta', type=int, default=0, metavar='N',
-                    help='Test/inference time augmentation (oversampling) factor. 0=None (default: 0)')
-parser.add_argument('--tif', action='store_true', default=False,
-                    help='Use tif dataset')
-parser.add_argument('--img-size', type=int, default=224, metavar='N',
-                    help='Image patch size (default: 224)')
-parser.add_argument('--batch-size', type=int, default=32, metavar='N',
-                    help='input batch size for training (default: 16)')
-parser.add_argument('--seed', type=int, default=1, metavar='S',
-                    help='random seed (default: 1)')
-parser.add_argument('--log-interval', type=int, default=100, metavar='N',
-                    help='how many batches to wait before logging training status')
-parser.add_argument('--num-processes', type=int, default=2, metavar='N',
-                    help='how many training processes to use (default: 2)')
-parser.add_argument('-r', '--restore-checkpoint', default=None,
-                    help='path to restore checkpoint, e.g. ./checkpoint-1.tar')
-parser.add_argument('--no-cuda', action='store_true', default=False,
-                    help='disables CUDA training')
-parser.add_argument('--num-gpu', type=int, default=1,
-                    help='Number of GPUS to use')
-parser.add_argument('--output', default='', type=str, metavar='PATH',
-                    help='path to output folder (default: none, current dir)')
-
+class DefaultConfigs(object):
+    data = 'train/' # path to dataset
+    model = 'resnet101' # Name of model to train (default: "countception"
+    multi_label = True # Multi-label target
+    tta = 0 # Test/inference time augmentation (oversampling) factor. 0=None (default: 0)
+    png = True
+    img_size = 512
+    batch_size = 8
+    seed = 1
+    log_interval = 1000 # how many batches to wait before logging training status
+    num_processes = 2 # how many training processes to use
+    resume = '' # path to restore checkpoint
+    no_cuda = False # disables CUDA training
+    num_gpu = 1
+    num_classes = 28
+    channels = 4
+    fold = 0
+    output = '/content/gdrive/My Drive/output/' # path to output folder
+    
+config = DefaultConfigs()
 
 def main():
-    args = parser.parse_args()
 
-    batch_size = args.batch_size
-    img_size = (args.img_size, args.img_size)
-    num_classes = 17
-    if args.tif:
-        img_type = '.tif'
+    batch_size = config.batch_size
+    img_size = (config.img_size, config.img_size)
+    num_classes = config.num_classes
+    if config.png:
+        img_type = '.png'
     else:
         img_type = '.jpg'
 
-    dataset = AmazonDataset(
-        args.data,
+    dataset = HumanDataset(
+        config.data,
         train=False,
-        multi_label=args.multi_label,
+        multi_label=config.multi_label,
         tags_type='all',
         img_type=img_type,
         img_size=img_size,
-        test_aug=args.tta,
+        test_aug=config.tta,
     )
 
     tags = get_tags()
-    output_col = ['image_name'] + tags
-    submission_col = ['image_name', 'tags']
+    output_col = ['Id'] + tags
+    submission_col = ['Id', 'tags']
 
     loader = data.DataLoader(
         dataset,
         batch_size=batch_size,
         shuffle=False,
-        num_workers=args.num_processes)
+        num_workers=config.num_processes)
 
-    model = create_model(args.model, pretrained=False, num_classes=num_classes, global_pool=args.gp)
+    model = get_net(config.model, num_classes=config.num_classes, channels=config.channels)
 
-    if not args.no_cuda:
-        if args.num_gpu > 1:
-            model = torch.nn.DataParallel(model, device_ids=list(range(args.num_gpu))).cuda()
+    if not config.no_cuda:
+        if config.num_gpu > 1:
+            model = torch.nn.DataParallel(model, device_ids=list(range(config.num_gpu))).cuda()
         else:
             model.cuda()
 
-    if args.restore_checkpoint is not None:
-        assert os.path.isfile(args.restore_checkpoint), '%s not found' % args.restore_checkpoint
-        checkpoint = torch.load(args.restore_checkpoint)
+    if config.restore_checkpoint is not None:
+        assert os.path.isfile(config.resume), '%s not found' % config.resume
+        checkpoint = torch.load(config.resume)
         print('Restoring model with %s architecture...' % checkpoint['arch'])
-        sparse_checkpoint = True if 'sparse' in checkpoint and checkpoint['sparse'] else False
-        if sparse_checkpoint:
-            print("Loading sparse model")
-            dense_sparse_dense.sparsify(model, sparsity=0.)  # ensure sparsity_masks exist in model definition
+      
         model.load_state_dict(checkpoint['state_dict'])
-        if 'args' in checkpoint:
-            train_args = checkpoint['args']
+
         if 'threshold' in checkpoint:
             threshold = checkpoint['threshold']
             threshold = torch.FloatTensor(threshold)
             print('Using thresholds:', threshold)
-            if not args.no_cuda:
+            if not config.no_cuda:
                 threshold = threshold.cuda()
         else:
             threshold = 0.5
-        if 'gp' in checkpoint and checkpoint['gp'] != args.gp:
-            print("Warning: Model created with global pooling (%s) different from checkpoint (%s)"
-                  % (args.gp, checkpoint['gp']))
-        csplit = os.path.normpath(args.restore_checkpoint).split(sep=os.path.sep)
+
+        csplit = os.path.normpath(config.resume).split(sep=os.path.sep)
         if len(csplit) > 1:
             exp_name = csplit[-2] + '-' + csplit[-1].split('.')[0]
         else:
             exp_name = ''
-        print('Model restored from file: %s' % args.restore_checkpoint)
+        print('Model restored from file: %s' % config.resume)
     else:
         assert False and "No checkpoint specified"
 
-    if args.output:
-        output_base = args.output
+    if config.output:
+        output_base = config.output
     else:
-        output_base = './output'
+        output_base = os.path.join('/content/gdrive/My Drive/','output')
     if not exp_name:
         exp_name = '-'.join([
-            args.model,
-            str(train_args.img_size),
-            'f'+str(train_args.fold),
-            'tif' if args.tif else 'jpg'])
+            config.model,
+            str(config.img_size),
+            'f'+str(config.fold),
+            'png' if config.png else 'jpg'])
     output_dir = get_outdir(output_base, 'predictions', exp_name)
 
     model.eval()
@@ -139,7 +117,7 @@ def main():
         end = time.time()
         for batch_idx, (input, target, index) in enumerate(loader):
             data_time_m.update(time.time() - end)
-            if not args.no_cuda:
+            if not config.no_cuda:
                 input = input.cuda()
             input_var = autograd.Variable(input, volatile=True)
             output = model(input_var)
@@ -171,7 +149,7 @@ def main():
                 # end iterating through batch
 
             batch_time_m.update(time.time() - end)
-            if batch_idx % args.log_interval == 0:
+            if batch_idx % config.log_interval == 0:
                 print('Inference: [{}/{} ({:.0f}%)]  '
                       'Time: {batch_time.val:.3f}s, {rate:.3f}/s  '
                       '({batch_time.avg:.3f}s, {rate_avg:.3f}/s)  '
