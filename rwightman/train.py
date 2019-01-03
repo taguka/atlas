@@ -38,7 +38,7 @@ class DefaultConfigs(object):
     labels = 'all' # Label set
     img_size = 512 # Image patch size 
     batch_size = 8
-    test_batch_size = 1000
+    test_batch_size = 100
     epochs = 200
     decay_epochs = 15 # epoch interval to decay LR
     ft_epochs = 0 # Number of finetuning epochs (final layer only)
