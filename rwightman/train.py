@@ -69,7 +69,7 @@ class DefaultConfigs(object):
         seed = 20 
     elif args.user == 'tegavrylenko':
         seed = 30  
-    log_interval = 100 # how many batches to wait before logging training status
+    log_interval = 1000 # how many batches to wait before logging training status
     num_processes = 1 # how many training processes to use
     no_cuda = False # disables CUDA training
     no_tb = False # disables tensorboard
@@ -84,7 +84,7 @@ class DefaultConfigs(object):
         resume = ''
     elif args.user == 'tegavrylenko':
         resume = ''  # path to latest checkpoint (default: none)
-    print_freq = 10 # print frequency 
+    print_freq = 200 # print frequency 
     save_batches = False # save images of batch inputs and targets every log interval for debugging/verification
     output = '/content/gdrive/My Drive/output/' # path to output folder (default: none, current dir)
     sparse = False # enable sparsity masking for DSD training
