@@ -38,7 +38,7 @@ class DefaultConfigs(object):
     labels = 'all' # Label set
     img_size = 512 # Image patch size 
     batch_size = 8
-    test_batch_size = 100
+    test_batch_size = 4
     epochs = 200
     decay_epochs = 15 # epoch interval to decay LR
     ft_epochs = 0 # Number of finetuning epochs (final layer only)
@@ -55,10 +55,11 @@ class DefaultConfigs(object):
     no_tb = False # disables tensorboard
     tbh = '127.0.0.1:8009' # Tensorboard (Crayon) host
     num_gpu = 1 # Number of GPUS to use
-    resume = '/content/gdrive/My Drive/atlas/checkpoint-5.pth.tar' # path to latest checkpoint (default: none)
+    checkpoint_path = '/content/gdrive/My Drive/atlas/'
+    resume = os.path.join(checkpoint_path, 'checkpoint-5.pth.tar') # path to latest checkpoint (default: none)
     print_freq = 10 # print frequency 
     save_batches = False # save images of batch inputs and targets every log interval for debugging/verification
-    output = '/content/gdrive/My Drive/' # path to output folder (default: none, current dir)
+    output = '/content/gdrive/My Drive/output/' # path to output folder (default: none, current dir)
     sparse = False # enable sparsity masking for DSD training
     class_weights = False # Use class weights for specified labels as loss penalty
     channels=4
@@ -89,6 +90,7 @@ def main():
     output_dir = get_outdir(output_base, 'train', exp_name)
 
     batch_size = config.batch_size
+    test_batch_size = config.test_batch_size
     num_epochs = config.epochs
     img_type = '.png' 
     img_size = (config.img_size, config.img_size)
@@ -131,7 +133,7 @@ def main():
 
     loader_eval = data.DataLoader(
         dataset_eval,
-        batch_size=batch_size,
+        batch_size=test_batch_size,
         shuffle=False,
         num_workers=config.num_processes
     )
@@ -318,7 +320,7 @@ def main():
                 'gp': config.gp,
                 },
                 is_best=best,
-                filename=os.path.join(DRIVE,'checkpoint-%d.pth.tar' % epoch),
+                filename=os.path.join(config.checkpoint_path,'checkpoint-%d.pth.tar' % epoch),
                 output_dir=output_dir)
 
     except KeyboardInterrupt:

@@ -1,7 +1,8 @@
-aguka136 -     fold0 4channel random 100
+aguka136 -     fold0 4channel random 100 done
 squirrel136 -  fold1 4channel random 200
-tegavrylenko - fold2 4channel random 300
+tegavrylenko - fold2 4channel random 300 done-
 
 tegavrylenko - fold1 3channel random 50 external
 
 gpu.colab - fold0 4channel random 1 resnet
+aguka136 - fold1 4channel random 10 resnet
