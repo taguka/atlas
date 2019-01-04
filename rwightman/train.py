@@ -1,6 +1,7 @@
 import csv
 import os
 import shutil
+import argparse
 import time
 import numpy as np
 from collections import OrderedDict
@@ -26,6 +27,11 @@ try:
 except ImportError:
     CrayonClient = None
 
+parser = argparse.ArgumentParser(description='user')
+parser.add_argument('--user', metavar='USER',
+                    help='colab user')
+args = parser.parse_args()
+    
 class DefaultConfigs(object):
     data = 'train/' # path to dataset
     model = 'resnet101' # Name of model to train (default: "countception"
@@ -34,7 +40,14 @@ class DefaultConfigs(object):
     multi_label = True # Multi-label target
     gp = 'avg' # Type of global pool, "avg", "max", "avgmax", "avgmaxc" 
     tta = 0 # Test/inference time augmentation (oversampling) factor. 0=None (default: 0)
-    fold = 0 # Train/valid fold
+    if args.user =='gpu.colab':
+        fold = 0
+    elif args.user == 'aguka136':
+        fold = 1
+    elif args.user == 'squirrel136':
+        fold = 2 
+    elif args.user == 'tegavrylenko':
+        fold = 3  # Train/valid fold
     labels = 'all' # Label set
     img_size = 512 # Image patch size 
     batch_size = 8
@@ -48,7 +61,14 @@ class DefaultConfigs(object):
     lr = 0.001 # learning rate
     momentum = 0.9 # SGD momentum
     weight_decay = 0.0001 # weight decay
-    seed = 1 # random seed 
+    if args.user =='gpu.colab':
+        seed = 1
+    elif args.user == 'aguka136':
+        seed = 10
+    elif args.user == 'squirrel136':
+        seed = 20 
+    elif args.user == 'tegavrylenko':
+        seed = 30  
     log_interval = 100 # how many batches to wait before logging training status
     num_processes = 1 # how many training processes to use
     no_cuda = False # disables CUDA training
@@ -56,7 +76,14 @@ class DefaultConfigs(object):
     tbh = '127.0.0.1:8009' # Tensorboard (Crayon) host
     num_gpu = 1 # Number of GPUS to use
     checkpoint_path = '/content/gdrive/My Drive/atlas/'
-    resume = os.path.join(checkpoint_path, 'checkpoint-5.pth.tar') # path to latest checkpoint (default: none)
+    if args.user =='gpu.colab':
+        resume =  os.path.join(checkpoint_path, 'checkpoint-5.pth.tar')
+    elif args.user == 'aguka136':
+        resume = ''
+    elif args.user == 'squirrel136':
+        resume = ''
+    elif args.user == 'tegavrylenko':
+        resume = ''  # path to latest checkpoint (default: none)
     print_freq = 10 # print frequency 
     save_batches = False # save images of batch inputs and targets every log interval for debugging/verification
     output = '/content/gdrive/My Drive/output/' # path to output folder (default: none, current dir)
