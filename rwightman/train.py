@@ -77,13 +77,13 @@ class DefaultConfigs(object):
     num_gpu = 1 # Number of GPUS to use
     checkpoint_path = '/content/gdrive/My Drive/atlas/'
     if args.user =='gpu.colab':
-        resume =  os.path.join(checkpoint_path, 'checkpoint-5.pth.tar')
+        resume = ''#os.path.join(checkpoint_path, 'checkpoint-15.pth.tar')
     elif args.user == 'aguka136':
-        resume = ''
+        resume = '' #os.path.join(checkpoint_path, 'checkpoint-7.pth.tar')
     elif args.user == 'squirrel136':
-        resume = ''
+        resume ='' # os.path.join(checkpoint_path, 'checkpoint-6.pth.tar')
     elif args.user == 'tegavrylenko':
-        resume = ''  # path to latest checkpoint (default: none)
+        resume =  ''#resume = os.path.join(checkpoint_path, 'checkpoint-7.pth.tar')  # path to latest checkpoint (default: none)
     print_freq = 200 # print frequency 
     save_batches = False # save images of batch inputs and targets every log interval for debugging/verification
     output = '/content/gdrive/My Drive/output/' # path to output folder (default: none, current dir)

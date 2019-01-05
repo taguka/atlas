@@ -23,7 +23,7 @@ from collections import Counter
 IMG_EXTENSIONS = [ '.png']
 LABEL_TYPE = ['all']
 
-LABEL_ALL = list(map(str,range(27)))
+LABEL_ALL = list(map(str,range(28)))
 
 def create_class_weight(labels_dict, mu=0.8):
   total = sum(labels_dict.values())
