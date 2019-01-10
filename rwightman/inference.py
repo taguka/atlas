@@ -11,7 +11,7 @@ import torch.utils.data as data
 from models import get_net
 
 class DefaultConfigs(object):
-    data = 'train/' # path to dataset
+    data = 'test/' # path to dataset
     model = 'resnet101' # Name of model to train (default: "countception"
     multi_label = True # Multi-label target
     tta = 0 # Test/inference time augmentation (oversampling) factor. 0=None (default: 0)
@@ -21,7 +21,7 @@ class DefaultConfigs(object):
     seed = 1
     log_interval = 1000 # how many batches to wait before logging training status
     num_processes = 2 # how many training processes to use
-    resume = '' # path to restore checkpoint
+    resume = '/content/gdrive/My Drive/output/train/20190107-205251-resnet101-512-f3/model_best.pth.tar' # path to restore checkpoint
     no_cuda = False # disables CUDA training
     num_gpu = 1
     num_classes = 28
@@ -43,6 +43,7 @@ def main():
 
     dataset = HumanDataset(
         config.data,
+        target_file='/content/gdrive/My Drive/atlas/sample_submission.csv',
         train=False,
         multi_label=config.multi_label,
         tags_type='all',
@@ -53,7 +54,7 @@ def main():
 
     tags = get_tags()
     output_col = ['Id'] + tags
-    submission_col = ['Id', 'tags']
+    submission_col = ['Id', 'Predicted']
 
     loader = data.DataLoader(
         dataset,
@@ -61,7 +62,7 @@ def main():
         shuffle=False,
         num_workers=config.num_processes)
 
-    model = get_net(config.model, num_classes=config.num_classes, channels=config.channels)
+    model = get_net(config.model, num_classes=config.num_classes, drop_rate=0.5, channels=config.channels)
 
     if not config.no_cuda:
         if config.num_gpu > 1:
@@ -69,7 +70,7 @@ def main():
         else:
             model.cuda()
 
-    if config.restore_checkpoint is not None:
+    if config.resume is not None:
         assert os.path.isfile(config.resume), '%s not found' % config.resume
         checkpoint = torch.load(config.resume)
         print('Restoring model with %s architecture...' % checkpoint['arch'])
@@ -83,8 +84,8 @@ def main():
             if not config.no_cuda:
                 threshold = threshold.cuda()
         else:
-            threshold = 0.5
-
+            threshold = 0.2
+        threshold = 0.2
         csplit = os.path.normpath(config.resume).split(sep=os.path.sep)
         if len(csplit) > 1:
             exp_name = csplit[-2] + '-' + csplit[-1].split('.')[0]

@@ -1,9 +1,7 @@
-from collections import defaultdict
+
 import cv2
 import torch
 import torch.utils.data as data
-from torch.utils.data.sampler import Sampler
-from torchvision import datasets, transforms
 import random
 import pandas as pd
 import numpy as np
@@ -12,7 +10,7 @@ import os
 import mytransforms
 import utils
 import re
-from collections import Counter
+from torchvision import transforms
 
 #BASE_PATH = 'C:\\Kaggle\\atlas\\rwightman\\data'
 #TRAIN_CSV = 'train.csv'
