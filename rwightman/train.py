@@ -1,4 +1,5 @@
 import csv
+import glob
 import os
 import shutil
 import argparse
@@ -38,7 +39,6 @@ class DefaultConfigs(object):
     opt = 'adam' # Optimizer
     loss = 'mlsm' # Loss function
     multi_label = True # Multi-label target
-    gp = 'avg' # Type of global pool, "avg", "max", "avgmax", "avgmaxc" 
     tta = 0 # Test/inference time augmentation (oversampling) factor. 0=None (default: 0)
     if args.user =='gpu.colab':
         fold = 0
@@ -48,7 +48,6 @@ class DefaultConfigs(object):
         fold = 2 
     elif args.user == 'tegavrylenko':
         fold = 3  # Train/valid fold
-    labels = 'all' # Label set
     img_size = 512 # Image patch size 
     batch_size = 8
     test_batch_size = 4
@@ -77,26 +76,22 @@ class DefaultConfigs(object):
     num_gpu = 1 # Number of GPUS to use
     checkpoint_path = '/content/gdrive/My Drive/atlas/'
     if args.user =='gpu.colab':
-        resume = ''#os.path.join(checkpoint_path, 'checkpoint-15.pth.tar')
+        resume = os.path.join(checkpoint_path, 'checkpoint-18.pth.tar')
     elif args.user == 'aguka136':
-        resume = '' #os.path.join(checkpoint_path, 'checkpoint-7.pth.tar')
+        resume = os.path.join(checkpoint_path, 'checkpoint-22.pth.tar')
     elif args.user == 'squirrel136':
-        resume ='' # os.path.join(checkpoint_path, 'checkpoint-6.pth.tar')
+        resume = os.path.join(checkpoint_path, 'checkpoint-28.pth.tar')
     elif args.user == 'tegavrylenko':
-        resume =  ''#resume = os.path.join(checkpoint_path, 'checkpoint-7.pth.tar')  # path to latest checkpoint (default: none)
+        resume == os.path.join(checkpoint_path, 'checkpoint-27.pth.tar')  # path to latest checkpoint (default: none)
     print_freq = 200 # print frequency 
     save_batches = False # save images of batch inputs and targets every log interval for debugging/verification
-    output = '/content/gdrive/My Drive/output/' # path to output folder (default: none, current dir)
-    sparse = False # enable sparsity masking for DSD training
+    output = '/gdrive/My Drive/atlas/output/' # path to output folder (default: none, current dir)
     class_weights = False # Use class weights for specified labels as loss penalty
     channels=4
-
-
-
+    img_type='.png'
 
 def main():
     config = DefaultConfigs()
-
     train_input_root = os.path.join(config.data)
     train_labels_file = 'labels.csv'
 
@@ -105,21 +100,30 @@ def main():
             os.makedirs(config.output)
         output_base = config.output
     else:
-        if not os.path.exists('gdrive/My Drive/output'):
-            os.makedirs('gdrive/My Drive/output')
-        output_base = 'gdrive/My Drive/output'
+        if not os.path.exists(config.output):
+            os.makedirs(config.output)
+        output_base = config.output
 
     exp_name = '-'.join([
         datetime.now().strftime("%Y%m%d-%H%M%S"),
         config.model,
         str(config.img_size),
         'f'+str(config.fold)])
-    output_dir = get_outdir(output_base, 'train', exp_name)
+    mask_exp_name = '-'.join([
+        config.model,
+        str(config.img_size),
+        'f'+str(config.fold)])
+    mask_exp_name=glob.glob(os.path.join(output_base,
+                                                'train','*' + mask_exp_name))
+    if config.resume and mask_exp_name:
+        output_dir=mask_exp_name
+    else:
+        output_dir = get_outdir(output_base, 'train', exp_name)
 
     batch_size = config.batch_size
     test_batch_size = config.test_batch_size
     num_epochs = config.epochs
-    img_type = '.png' 
+    img_type = config.image_type
     img_size = (config.img_size, config.img_size)
     num_classes = get_tags_size(config.labels)
 
@@ -129,7 +133,6 @@ def main():
         train_input_root,
         train_labels_file,
         train=True,
-        tags_type=config.labels,
         multi_label=config.multi_label,
         img_type=img_type,
         img_size=img_size,
@@ -150,7 +153,6 @@ def main():
         train_input_root,
         train_labels_file,
         train=False,
-        tags_type=config.labels,
         multi_label=config.multi_label,
         img_type=img_type,
         img_size=img_size,
@@ -232,26 +234,13 @@ def main():
             print("=> loading checkpoint '{}'".format(config.resume))
             checkpoint = torch.load(config.resume)
             config.start_epoch = checkpoint['epoch']
-#            sparse_checkpoint = True if 'sparse' in checkpoint and checkpoint['sparse'] else False
-#            if sparse_checkpoint:
-#                print("Loading sparse model")
-#                dense_sparse_dense.sparsify(model, sparsity=0.)  # ensure sparsity_masks exist in model definition
             model.load_state_dict(checkpoint['state_dict'])
             optimizer.load_state_dict(checkpoint['optimizer'])
             print("=> loaded checkpoint '{}' (epoch {})".format(config.resume, checkpoint['epoch']))
             start_epoch = checkpoint['epoch']
-#            if args.sparse and not sparse_checkpoint:
-#                print("Sparsifying loaded model")
-#                dense_sparse_dense.sparsify(model, sparsity=0.5)
-#            elif sparse_checkpoint and not args.sparse:
-#                print("Densifying loaded model")
-#                dense_sparse_dense.densify(model)
         else:
             print("=> no checkpoint found at '{}'".format(config.resume))
             exit(-1)
-#    else:
-#        if args.sparse:
-#            dense_sparse_dense.sparsify(model, sparsity=0.5)
 
     use_tensorboard = not config.no_tb and CrayonClient is not None
     if use_tensorboard:
@@ -301,7 +290,7 @@ def main():
     score_metric = 'f2'
     best_loss = None
     best_f2 = None
-    threshold = 0.3
+    threshold = 0.2
     try:
         for epoch in range(start_epoch, num_epochs + 1):
             if config.decay_epochs:
@@ -339,12 +328,10 @@ def main():
             save_checkpoint({
                 'epoch': epoch + 1,
                 'arch': config.model,
-                'sparse': False,
                 'state_dict':  model.state_dict(),
                 'optimizer': optimizer.state_dict(),
                 'threshold': latest_threshold,
-                'config': config,
-                'gp': config.gp,
+                'config': config
                 },
                 is_best=best,
                 filename=os.path.join(config.checkpoint_path,'checkpoint-%d.pth.tar' % epoch),
@@ -394,9 +381,6 @@ def train_epoch(
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-
-#        if args.sparse:
-#            dense_sparse_dense.apply_sparsity_mask(model)
 
         batch_time_m.update(time.time() - end)
         if batch_idx % config.log_interval == 0:

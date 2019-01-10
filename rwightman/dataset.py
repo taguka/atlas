@@ -9,8 +9,6 @@ import pandas as pd
 import numpy as np
 import math
 import os
-import functools
-import time
 import mytransforms
 import utils
 import re
@@ -19,10 +17,7 @@ from collections import Counter
 #BASE_PATH = 'C:\\Kaggle\\atlas\\rwightman\\data'
 #TRAIN_CSV = 'train.csv'
 
-
 IMG_EXTENSIONS = [ '.png']
-LABEL_TYPE = ['all']
-
 LABEL_ALL = list(map(str,range(28)))
 
 def create_class_weight(labels_dict, mu=0.8):
@@ -61,23 +56,17 @@ ALL_WEIGHTS_L = [1.15, 3.48, 2.42, 3.26, 3.08, 2.78, 3.7, 2.67, 6.64, 6.81,
                  7.28, 3.62, 4.08, 4.33, 3.64, 7.57, 4.34, 5.27, 3.81, 3.31, 
                  5.46, 2.38, 3.93, 2.62, 4.84, 1.6, 4.82, 8.21]
 
-def get_tags(tags_type='all'):
-    if tags_type == 'all':
-        return LABEL_ALL
-    else:
-        assert False and "Invalid label type"
-        return []
+def get_labels():
+    return LABEL_ALL
 
 
-def get_tags_size(tags_type='all'):
-    return len(get_tags(tags_type))
+def get_labels_size():
+    return len(get_labels())
 
 
-def get_class_weights(tags_type='all'):
-    if tags_type == 'all':
-        return np.array(ALL_WEIGHTS_L)
-    else:
-        return np.array([])
+def get_class_weights():
+    return np.array(ALL_WEIGHTS_L)
+
 
 
 def find_inputs(folder, types=IMG_EXTENSIONS):
@@ -90,11 +79,9 @@ def find_inputs(folder, types=IMG_EXTENSIONS):
                 inputs.append((base, abs_filename))
     return inputs
 
-
 def natural_key(string_):
     #See http://www.codinghorror.com/blog/archives/001018.html
     return [int(s) if s.isdigit() else s for s in re.split(r'(\d+)', string_.lower())]
-
 
 def get_test_aug(factor):
     if not factor or factor == 1:
@@ -115,13 +102,11 @@ def get_test_aug(factor):
         return [
             [False, False, False]]
 
-
 class HumanDataset(data.Dataset):
     def __init__(
             self,
             input_root,
             target_file='',
-            tags_type='all',
             multi_label=True,
             train=True,
             train_fold=False,
@@ -144,11 +129,13 @@ class HumanDataset(data.Dataset):
                 target_df = target_df[target_df['fold'] == fold]
             target_df.drop(['fold'], 1, inplace=True)
 
-            input_dict = dict(inputs)            
+            input_dict = dict(inputs)    
+            target_df = target_df[target_df.Id.map(lambda x: x in input_dict)]
+            target_df['filename'] = target_df.Id.map(lambda x: input_dict[x])
             self.inputs = target_df['Id'].apply(lambda x:os.path.join(input_root,x)).tolist()
 
-            tags = get_tags(tags_type)
-            self.target_array = target_df.as_matrix(columns=tags).astype(np.float32)
+            labels = get_labels()
+            self.target_array = target_df.as_matrix(columns=labels).astype(np.float32)
             if not multi_label:
                 self.target_array = np.argmax(self.target_array, axis=1)
 
@@ -159,7 +146,6 @@ class HumanDataset(data.Dataset):
             self.target_array = None
             self.inputs = [x[1] for x in inputs]
 
-        self.tags_type = tags_type
         self.train = train
         if img_type == '.jpg':
             self.dataset_mean = [0.31535792, 0.34446435, 0.30275137]
@@ -357,7 +343,7 @@ class HumanDataset(data.Dataset):
         return len(self.test_aug)
 
     def get_class_weights(self):
-        return get_class_weights(self.tags_type)
+        return get_class_weights()
 
     def get_sample_weights(self):
         class_weights = torch.FloatTensor(self.get_class_weights())
@@ -369,8 +355,6 @@ class HumanDataset(data.Dataset):
         weighted_samples = weighted_samples / weighted_samples.min()
         return weighted_samples
 
-
-"""
 class WeightedRandomOverSampler(Sampler):
     #Over-samples elements from [0,..,len(weights)-1] factor number of times.
     #Each element is sample at least once, the remaining over-sampling is determined
@@ -395,4 +379,3 @@ class WeightedRandomOverSampler(Sampler):
 
     def __len__(self):
         return self.num_samples
-"""

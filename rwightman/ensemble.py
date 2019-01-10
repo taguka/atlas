@@ -1,42 +1,15 @@
-import argparse
+
 import os
-import time
 import numpy as np
 import pandas as pd
 import dataset
 
-parser = argparse.ArgumentParser(description='PyTorch Amazon Inference')
-parser.add_argument('data', metavar='DIR',
-                    help='path to dataset')
-parser.add_argument('-t, --type', default='vote', type=str, metavar='TYPE',
-                    help='Type of ensemble: vote, geometric, arithmetic (default: "vote"')
-parser.add_argument('--multi-label', action='store_true', default=False,
-                    help='multi-label target')
-parser.add_argument('--tif', action='store_true', default=False,
-                    help='Use tif dataset')
 
+folder='C:\\Kaggle\\atlas\\submissions'
+submission_col = ['Id', 'Predicted']
 
-submission_col = ['image_name', 'tags']
+LABEL_ALL = list(map(str,range(28)))
 
-LABEL_ALL = [
-    'blow_down',
-    'conventional_mine',
-    'slash_burn',
-    'blooming',
-    'artisinal_mine',
-    'selective_logging',
-    'bare_ground',
-    'cloudy',
-    'haze',
-    'habitation',
-    'cultivation',
-    'partly_cloudy',
-    'water',
-    'road',
-    'agriculture',
-    'clear',
-    'primary',
-]
 
 def find_inputs(folder, types=['.csv']):
     inputs = []
@@ -56,17 +29,16 @@ def vector_to_tags(v, tags):
 
 
 def main():
-    args = parser.parse_args()
 
-    subs = find_inputs(args.data, types=['.csv'])
+    subs = find_inputs(folder, types=['.csv'])
     dfs = []
     for s in subs:
         df = pd.read_csv(s[1], index_col=None)
-        df = df.set_index('image_name')
-        df.tags = df.tags.map(lambda x: set(x.split()))
+        df = df.set_index('Id')
+        df.Predicted = df.Predicted.map(lambda x: set(str(x).split()))
         for l in LABEL_ALL:
-            df[l] = [1 if l in tag else 0 for tag in df.tags]
-        df.drop(['tags'], inplace=True, axis=1)
+            df[l] = [1 if l in tag else 0 for tag in df.Predicted]
+        df.drop(['Predicted'], inplace=True, axis=1)
         dfs.append(df)
 
     assert len(dfs)
@@ -74,7 +46,7 @@ def main():
     for o in dfs[1:]:
         d = d.add(o)
     d = d / len(dfs)
-    b = (d >= 0.42).astype(int)
+    b = (d > 0.5).astype(int)
 
     tags = dataset.LABEL_ALL
     m = b.as_matrix()
@@ -84,7 +56,7 @@ def main():
         out.append([b.index[i]] + [t])
 
     results_sub_df = pd.DataFrame(out, columns=submission_col)
-    results_sub_df.to_csv('submission-e.csv', index=False)
+    results_sub_df.to_csv(os.path.join(folder,'submission-e.csv'), index=False)
 
 
 if __name__ == '__main__':
