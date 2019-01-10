@@ -76,23 +76,13 @@ class DefaultConfigs(object):
     num_gpu = 1 # Number of GPUS to use
     checkpoint_path = '/content/gdrive/My Drive/atlas/'
     if args.user =='gpu.colab':
-<<<<<<< HEAD
-        resume = os.path.join(checkpoint_path, 'checkpoint-18.pth.tar')
+        resume = ''#os.path.join(checkpoint_path, 'checkpoint-18.pth.tar')
     elif args.user == 'aguka136':
-        resume = os.path.join(checkpoint_path, 'checkpoint-22.pth.tar')
+        resume = ''#os.path.join(checkpoint_path, 'checkpoint-22.pth.tar')
     elif args.user == 'squirrel136':
-        resume = os.path.join(checkpoint_path, 'checkpoint-28.pth.tar')
+        resume = ''#os.path.join(checkpoint_path, 'checkpoint-28.pth.tar')
     elif args.user == 'tegavrylenko':
-        resume == os.path.join(checkpoint_path, 'checkpoint-27.pth.tar')  # path to latest checkpoint (default: none)
-=======
-        resume = os.path.join(checkpoint_path, 'checkpoint-14.pth.tar')
-    elif args.user == 'aguka136':
-        resume = os.path.join(checkpoint_path, 'checkpoint-17.pth.tar')
-    elif args.user == 'squirrel136':
-        resume = os.path.join(checkpoint_path, 'checkpoint-23.pth.tar')
-    elif args.user == 'tegavrylenko':
-        resume =  resume = os.path.join(checkpoint_path, 'checkpoint-33.pth.tar')  # path to latest checkpoint (default: none)
->>>>>>> 6d1f075f8fb0143e5cbe33097a4bda63230d56dd
+        resume == ''#os.path.join(checkpoint_path, 'checkpoint-27.pth.tar')  # path to latest checkpoint (default: none)
     print_freq = 200 # print frequency 
     save_batches = False # save images of batch inputs and targets every log interval for debugging/verification
     output = '/gdrive/My Drive/atlas/output/' # path to output folder (default: none, current dir)
